@@ -1,7 +1,7 @@
 #!/bin/zsh
 
-. ./steampath-vars.sh
-. ./github-vars.sh
+. ./common/vars/steampath
+. ./common/vars/github
 
 # --------------------------------------------------------------------------------------
 # --- CLI tools definitions
@@ -23,32 +23,19 @@ Sed=$(which sed)
 # --- Script
 # --------------------------------------------------------------------------------------
 
-Response="$($Curl -s "$GEProtonLatestRelease" | $Sed 's/\\r\\n//g')"
+. ./common/helpers.sh
+. ./common/http.sh
 
-if [ $? -ne 0 ] ; then
-    echo "Request to Github failed." >&2
-    echo $Response >&2
-    exit 1
-fi
+Response="$(fetch_url "$GEProtonLatestRelease")"
+LatestRelease="$(parse_response "$Response")"
 
-VersionInfo="$(echo $Response | $Jq -r .)"
-
-if [ $? -ne 0 ] ; then
-    echo "Parsing the response data failed." >&2
-    echo $Response >&2
-    exit 1
-elif [ $VersionInfo = "" ] ; then
-    echo "Empty response from server." >&2
-    exit 1
-fi
-
-LatestVersion=$(echo "$VersionInfo" | $Jq -r .name)
-LatestTag=$(echo "$VersionInfo" | $Jq -r .tag_name)
+LatestVersion=$(echo "$LatestRelease" | $Jq -r .name)
+LatestTag=$(echo "$LatestRelease" | $Jq -r .tag_name)
 
 echo "---"
 echo "Latest version of GE Proton is $LatestVersion (${LatestTag})."
 echo ""
-echo "Description: $(echo "$VersionInfo" | $Jq -r .body | fmt)"
+echo "Description: $(echo "$LatestRelease" | $Jq -r .body | fmt)"
 echo "---"
 echo ""
 
@@ -73,24 +60,7 @@ read Answer
 Answer=${Answer:-n}
 
 if [ $Answer = "Y" ] || [ $Answer = "y" ] ; then
-    DownloadUrl=$(echo "$VersionInfo" | $Jq -r '.assets | .[0] | .browser_download_url' )
-    DownloadPackage=$(echo "$VersionInfo" | $Jq -r '.assets | .[0] | .name' )
-    
-    echo "Downloading the release package."
-    $Curl -L --progress-bar "$DownloadUrl" | gunzip - | $Tar -xf - -C "$CompatibilityToolsPath"
-    
-    if [ $? -ne 0 ] ; then
-        echo "Download failed." >&2
-        exit 1
-    fi
-    
-    if [ ! -d "$CompatibilityToolsPath/$(echo $DownloadPackage | $Sed 's/\.tar\.gz//g')" ] ; then
-        echo "Download failed." >&2
-        exit 1
-    fi
-
-    echo "Done."
-    exit 0
+    install_release $LatestRelease
 elif [ $Answer = "n" ] || [ $Answer = "N" ] ; then
     echo "Not updating."
     exit 0

@@ -1,7 +1,7 @@
  #!/bin/zsh
 
-. ./steampath-vars.sh
-. ./github-vars.sh
+. ./common/vars/steampath
+. ./common/vars/github
 
 # --------------------------------------------------------------------------------------
 # --- CLI tools definitions
@@ -20,63 +20,60 @@ Tar=$(which tar)
 Sed=$(which sed)
 
 # --------------------------------------------------------------------------------------
-# --- Script
+# --- Functions
 # --------------------------------------------------------------------------------------
 
-Response="$($Curl -s "$GEProtonLatestRelease" | $Sed 's/\\r\\n//g')"
+. ./common/http.sh
+. ./common/helpers.sh
 
-if [ $? -ne 0 ] ; then
-    echo "Request to Github failed." >& 2
-    exit 1
-fi
+# --------------------------------------------------------------------------------------
+# --- Main
+# --------------------------------------------------------------------------------------
 
-VersionInfo="$(echo $Response | $Jq -r .)"
+Response="$(fetch_url "$GEProtonLatestRelease")"
+LatestRelease="$(parse_response "$Response")"
 
-if [ $? -ne 0 ] ; then
-    echo "Parsing the response data failed." >&2
-    echo $Response >&2
-    exit 1
-elif [ "$VersionInfo" = "" ] ; then
-    echo "Empty response from server." >&2
-    exit 1
-fi
-
-LatestVersion=$(echo "$VersionInfo" | $Jq -r .name)
-LatestTag=$(echo "$VersionInfo" | $Jq -r .tag_name)
+LatestVersion=$(echo "$LatestRelease" | $Jq -r .name)
+LatestTag=$(echo "$LatestRelease" | $Jq -r .tag_name)
 
 echo "---"
 echo "Latest version of GE Proton is $LatestVersion (${LatestTag})."
 echo ""
-echo "Description: $(echo "$VersionInfo" | $Jq -r .body | fmt)"
+echo "Description: $(echo "$LatestRelease" | $Jq -r .body | fmt)"
 echo "---"
 echo ""
 
-echo -n "Continue? [y/N] " 
+# Check for last 5 releases
+
+Response="$(fetch_url "$GEProtonReleases")"
+Releases="$(parse_response "$Response")"
+
+echo "Recent 5 releases (excluding latest)"
+echo "---"
+Output="ID,Release Tag,Release Name,Release Date\n"
+
+for Index in $(seq 1 5)
+do
+    ReleaseInfo="$(echo $Releases | $Jq -r --arg i "$Index" '.[$i|tonumber] | [.tag_name, .name, .published_at] | @csv' | sed 's/\"//g')"
+    Output="${Output}$(echo "$Index,$ReleaseInfo")\n"
+done
+
+echo $Output | column -t -s','
+echo -n "Choose release to install, l for latest (default) [L/n/1..5]: " 
 read Answer
 
-Answer=${Answer:-n}
+Answer=${Answer:-l}
 
-if [ $Answer = "Y" ] || [ $Answer = "y" ] ; then
-    DownloadUrl=$(echo "$VersionInfo" | $Jq -r '.assets | .[0] | .browser_download_url' )
-    DownloadPackage=$(echo "$VersionInfo" | $Jq -r '.assets | .[0] | .name' )
-
-    echo "Downloading the release package."
-    $Curl -L --progress-bar "$DownloadUrl" | gunzip - | $Tar -xf - -C "$CompatibilityToolsPath"
-
-    if [ $? -ne 0 ] ; then
-        echo "Download failed." >&2
-        exit 1
-    fi
-
-    if [ ! -d "$CompatibilityToolsPath/$(echo $DownloadPackage | $Sed 's/\.tar\.gz//g')" ] ; then
-        echo "Download failed." >&2
-        exit 1
-    fi
-
-    echo "Done."
+if [ $Answer = "l" ] || [ $Answer = "L" ] ; then
+    install_release "$LatestRelease"
 elif [ $Answer = "n" ] || [ $Answer = "N" ] ; then
     echo "Installation cancelled."
     exit 0
+elif [ ! $(echo $Answer | sed 's/^[1-5]$//g') ] ; then
+    echo "Installing another release."
+    ReleaseId=$Answer
+    Release=$(echo $Releases | $Jq -r --arg i $ReleaseId '.[$i|tonumber]')
+    install_release "$Release"
 else
     echo "Invalid input." >&2
     exit 
