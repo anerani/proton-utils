@@ -1,30 +1,7 @@
 #!/bin/zsh
 
-# --------------------------------------------------------------------------------------
-# --- Local path definitions
-# --------------------------------------------------------------------------------------
-
-SteamPath="$HOME/.steam"
-CompatibilityToolsPath="$SteamPath/compatibilitytools.d"
-
-if [ ! -d "$SteamPath" ] ; then
-    echo "Steam not found from $SteamPath" >&2
-    exit 1
-fi
-
-if [ ! -d "$CompatibilityToolsPath" ] ; then
-    echo "Compatibility tools path not found from $CompatibilityToolsPath" >&2
-    exit 1
-fi
-
-# --------------------------------------------------------------------------------------
-# --- Github API definitions
-# --------------------------------------------------------------------------------------
-
-GithubAPI="https://api.github.com/repos"
-GEProtonPath="GloriousEggroll/proton-ge-custom"
-GEProtonReleases="${GithubAPI}/${GEProtonPath}/releases"
-GEProtonLatestRelease="${GEProtonReleases}/latest"
+. ./steampath-vars.sh
+. ./github-vars.sh
 
 # --------------------------------------------------------------------------------------
 # --- CLI tools definitions
