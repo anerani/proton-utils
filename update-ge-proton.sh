@@ -7,7 +7,6 @@
 # --- CLI tools definitions
 # --------------------------------------------------------------------------------------
 
-Curl=$(which curl)
 Ls=$(which ls)
 Jq=$(which jq)
 
@@ -23,7 +22,7 @@ Sed=$(which sed)
 # --- Script
 # --------------------------------------------------------------------------------------
 
-. ./common/helpers.sh
+. ./common/utils.sh
 . ./common/http.sh
 
 Response="$(fetch_url "$GEProtonLatestRelease")"

@@ -1,3 +1,5 @@
+Curl=$(which curl)
+
 fetch_url ()
 {
     local Response="$($Curl -s "$1" | $Sed 's/\\r\\n//g')"

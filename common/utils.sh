@@ -1,3 +1,6 @@
+Curl=$(which curl)
+Tar=$(which tar)
+
 install_release()
 {
     DownloadUrl=$(echo "$1" | $Jq -r '.assets | .[0] | .browser_download_url' )
