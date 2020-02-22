@@ -48,15 +48,15 @@ Releases="$(parse_response "$Response")"
 
 echo "Recent 5 releases (excluding latest)"
 echo "---"
-Output="ID,Release Tag,Release Name,Release Date\n"
+Output=$"ID,Release Tag,Release Name,Release Date\n"
 
 for Index in $(seq 1 5)
 do
     ReleaseInfo="$(echo $Releases | $Jq -r --arg i "$Index" '.[$i|tonumber] | [.tag_name, .name, .published_at] | @csv' | sed 's/\"//g')"
-    Output="${Output}$(echo "$Index,$ReleaseInfo")\n"
+    Output=$"${Output}$(echo -n "$Index,$ReleaseInfo")\n"
 done
 
-echo $Output | column -t -s','
+echo -e "$Output" | column -t -s','
 echo -n "Choose release to install, l for latest (default) [L/n/1..5]: " 
 read Answer
 
@@ -78,4 +78,3 @@ else
 fi
 
 exit 0
-
